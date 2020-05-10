@@ -11,7 +11,7 @@ try {
     window.$ = window.jQuery = require('jquery');
 
     require('bootstrap');
-} catch (e) {}
+} catch (e) { }
 
 /**
  * We'll load the axios HTTP library which allows us to easily issue requests
@@ -22,6 +22,28 @@ try {
 window.axios = require('axios');
 
 window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
+window.axios.defaults.headers.common['Content-Type'] = 'application/json';
+window.axios.defaults.baseURL = '/api'
+
+// Intercept the request to make sure the token is injected into the header.
+window.axios.interceptors.request.use(config => {
+    config.headers['Authorization'] = `Bearer ${localStorage.getItem('jwt-token')}`
+    config.headers['X-CSRF-TOKEN'] = window.Laravel.csrfToken
+    return config
+})
+// Intercept the response and…
+window.axios.interceptors.response.use(response => {
+    // …get the token from the header or response data if exists, and save it.
+    const token = response.headers['Authorization'] || response.data['access_token']
+    if (token) {
+        localStorage.setItem('jwt-token', token)
+    }
+    return response
+}, error => {
+    // Also, if we receive a Bad Request / Unauthorized error
+    console.log(error)
+    return Promise.reject(error)
+})
 
 /**
  * Echo exposes an expressive API for subscribing to channels and listening
